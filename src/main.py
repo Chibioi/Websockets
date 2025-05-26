@@ -82,7 +82,8 @@ def HandleRequest(client_socket, input_sockets):
         (method, target, http_version, headers_map) = ParseRequest(message)
 
     print("method, target, http_version:", method, target, http_version)
-    print("headers: ", headers_map)
+    print("headers: ")
+    print(headers_map)
 
     # For now, just return a 200. Should probably return length too, eh
     client_socket.send(b"HTTP/1.1 200 OK\r\n\r\n" + default_http_response)
@@ -91,12 +92,23 @@ def HandleRequest(client_socket, input_sockets):
 
 # Pass the first line and headers from the request
 def ParseRequest(request):
-    headers_map = {}
+    headers_map = {}  # Initializes an empty dictionary that will be used to store parsed HTTP request
     # Assume headers and body are split by '\r\n\r\n' and we always have them.
     # Also assume all headers end with'\r\n'.
     # Also assume it starts with the method.
-    split_request = request.split("\r\n\r\n")[0].split("\r\n")
-    [method, target, http_version] = split_request[0].split(" ")
+    split_request = request.split(
+        "\r\n\r\n"
+    )[
+        0
+    ].split(
+        "\r\n"
+    )  # Split the request between the "\r\n\r\n" sequence to differentiate between the headers and the
+    # beginning of the message body (if any)
+    # [0] isolates the header section of the HTTP request discarding the message body
+    [method, target, http_version] = split_request[0].split(
+        " "
+    )  # split_request[0] accesses the first element of split_request,
+    # which is the request line (e.g., GET /index.html HTTP/1.1).
     headers = split_request[1:]
     for header_entry in headers:
         [header, value] = header_entry.split(": ")
@@ -105,5 +117,11 @@ def ParseRequest(request):
     return (method, target, http_version, headers_map)
 
 
-def close_socket():
-    pass
+def close_socket(client_socket, input_sockets):
+    input_sockets.renove(client_socket)
+    client_socket.close()
+    return
+
+
+if __name__ == "__main__":
+    main()

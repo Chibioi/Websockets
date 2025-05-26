@@ -32,12 +32,15 @@ def main():
             input_sockets, output_sockets, xlist, 5
         )[
             0
-        ]  # Involving a system call (select()). Returns a list of sockets that are ready for Reading, Writing and Exceptions. Because of the [0] it returns only the first index of the tuple which is the sockets available for Reading which is assigned to the variable readable_sockets.
+        ]  # Involving a system call (select()). Returns a list of sockets that are ready for Reading,
+        # Writing and Exceptions. Because of the [0] it returns only the first index of the tuple which
+        # is the sockets available for Reading which is assigned to the variable readable_sockets.
         for ready_socket in readable_sockets:
             # Make sure is not already closed
             if (
                 ready_socket.fileno == -1
-            ):  # returns the underlying file descriptor (e.g sockets in this case) of the stream if it exists. An OSError is raised if the IO object does not use a file descriptor.
+            ):  # returns the underlying file descriptor (e.g sockets in this case)
+                # of the stream if it exists. An OSError is raised if the IO object does not use a file descriptor.
                 continue
             if ready_socket == tcp_socket:
                 print("Handling main door socket")
@@ -51,10 +54,56 @@ def HandleNewConnection(main_door_socket, input_sockets):
     # When we get a connection on the main socket, we want to accept the new
     # connection and add it to our input socket list. When we loop back around,
     # that socket will be ready to read from.
-    client_socket, client_address = main_door_socket.accept()
+    client_socket, client_address = (
+        main_door_socket.accept()
+    )  # Returns two values which are conn(which is the new socket) and address(the address bounded to the s
+    # ocket on the other end of the connection)
     print("New socket", client_socket.fileno(), "from address:", client_address)
     input_sockets.append(client_socket)
 
 
 def HandleRequest(client_socket, input_sockets):
+    print("Handling request from the client socket: ", client_socket.fileno())
+    message = ""
+    # Very naive approach: read until we find the last blank line
+    while True:
+        data_in_bytes = client_socket.recv(buffer_size)
+        # Connection on client side has closed.
+        if len(data_in_bytes) == 0:
+            close_socket(client_socket, input_sockets)
+            input_sockets.remove(client_socket)
+            client_socket.close()
+            return
+        message_segment = data_in_bytes.decode()
+        message += message_segment
+        if len(message) > 4 and message_segment[-4:] == "\r\n\r\n":
+            break
+        print("Received message: ", message)
+        (method, target, http_version, headers_map) = ParseRequest(message)
+
+    print("method, target, http_version:", method, target, http_version)
+    print("headers: ", headers_map)
+
+    # For now, just return a 200. Should probably return length too, eh
+    client_socket.send(b"HTTP/1.1 200 OK\r\n\r\n" + default_http_response)
+    close_socket(client_socket, input_sockets)
+
+
+# Pass the first line and headers from the request
+def ParseRequest(request):
+    headers_map = {}
+    # Assume headers and body are split by '\r\n\r\n' and we always have them.
+    # Also assume all headers end with'\r\n'.
+    # Also assume it starts with the method.
+    split_request = request.split("\r\n\r\n")[0].split("\r\n")
+    [method, target, http_version] = split_request[0].split(" ")
+    headers = split_request[1:]
+    for header_entry in headers:
+        [header, value] = header_entry.split(": ")
+        # Headers are case insensitive, so we can just keep track in lowercase.
+        headers_map[header.lower()] = value
+    return (method, target, http_version, headers_map)
+
+
+def close_socket():
     pass

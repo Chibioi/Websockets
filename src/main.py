@@ -3,6 +3,12 @@ import select  # Provides access to the select() system call
 # The select() system call monitor many file descriptors e.g sockets and wait to see if one or more of them are ready for some I/O operations
 
 
+from websocket import (
+    WS_ENDPOINT,
+    handle_WS_handshake_request,
+    isValid_WSRequest,
+)
+
 tcp_ip = "127.0.0.1"
 tcp_port = 5010
 buffer_size = 1024 * 1024
@@ -25,6 +31,7 @@ def main():
     input_sockets = [tcp_socket]  # Reading
     output_sockets = []  # Writing
     xlist = []  # For exceptional conditions e.g can indicate out-of-bounds data
+    ws_sockets = []
 
     while True:
         # Get the sockets that are ready to be read (the first three of the tuple)
@@ -78,12 +85,23 @@ def HandleRequest(client_socket, input_sockets):
         message += message_segment
         if len(message) > 4 and message_segment[-4:] == "\r\n\r\n":
             break
-        print("Received message: ", message)
-        (method, target, http_version, headers_map) = ParseRequest(message)
+    print("Received message: ", message)
+    method, target, http_version, headers_map = ParseRequest(message)
 
-    print("method, target, http_version:", method, target, http_version)
+    print("method, target, http_version: ", method, target, http_version)
     print("headers: ")
     print(headers_map)
+
+    if target == WS_ENDPOINT:
+        print("Request to WS endpoint!!")
+        if isValid_WSRequest(method, target, http_version, headers_map):
+            handle_WS_handshake_request(client_socket, ws_sockets, headers_map)
+            return
+        else:
+            # For invalid websocket request
+            client_socket.send(b"HTTP/1.1 400 Bad Request")
+            close_socket(client_socket, input_sockets, ws_sockets)
+            return
 
     # For now, just return a 200. Should probably return length too, eh
     client_socket.send(b"HTTP/1.1 200 OK\r\n\r\n" + default_http_response)
@@ -118,7 +136,7 @@ def ParseRequest(request):
 
 
 def close_socket(client_socket, input_sockets):
-    input_sockets.renove(client_socket)
+    input_sockets.remove(client_socket)
     client_socket.close()
     return
 

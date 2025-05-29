@@ -54,3 +54,8 @@ def handle_WS_handshake_request(client_socket, ws_sockets, headers_map):
     print("\nresponse:\n", websocket_response)
 
     client_socket.send(websocket_response.encode())
+
+
+def handle_websocket_message(client_socket, input_sockets, ws_sockets):
+    print("Handling WS message from client socket:", client_socket.fileno())
+    message = b""

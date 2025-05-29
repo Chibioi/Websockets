@@ -7,6 +7,7 @@ from websocket import (
     WS_ENDPOINT,
     handle_WS_handshake_request,
     isValid_WSRequest,
+    handle_websocket_message,
 )
 
 tcp_ip = "127.0.0.1"
@@ -52,6 +53,10 @@ def main():
             if ready_socket == tcp_socket:
                 print("Handling main door socket")
                 HandleNewConnection(tcp_socket, input_sockets)
+
+            elif ready_socket in ws_sockets:
+                print("this is where we would handle the websocket message")
+                handle_websocket_message(ready_socket, input_sockets, ws_sockets)
             else:
                 print("Handling regular socket read")
                 HandleRequest(ready_socket, input_sockets)

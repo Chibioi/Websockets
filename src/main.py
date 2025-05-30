@@ -3,12 +3,14 @@ import select  # Provides access to the select() system call
 # The select() system call monitor many file descriptors e.g sockets and wait to see if one or more of them are ready for some I/O operations
 
 
-from websocket import (
-    WS_ENDPOINT,
-    handle_WS_handshake_request,
-    isValid_WSRequest,
-    handle_websocket_message,
-)
+# from websocket import (
+#     WS_ENDPOINT,
+#     handle_WS_handshake_request,
+#     isValid_WSRequest,
+#     handle_websocket_message,
+# )
+
+import websocket
 
 tcp_ip = "127.0.0.1"
 tcp_port = 5010
@@ -56,10 +58,12 @@ def main():
 
             elif ready_socket in ws_sockets:
                 print("this is where we would handle the websocket message")
-                handle_websocket_message(ready_socket, input_sockets, ws_sockets)
+                websocket.handle_websocket_message(
+                    ready_socket, input_sockets, ws_sockets
+                )
             else:
                 print("Handling regular socket read")
-                HandleRequest(ready_socket, input_sockets)
+                HandleRequest(ready_socket, input_sockets, ws_sockets)
 
 
 def HandleNewConnection(main_door_socket, input_sockets):
@@ -74,7 +78,7 @@ def HandleNewConnection(main_door_socket, input_sockets):
     input_sockets.append(client_socket)
 
 
-def HandleRequest(client_socket, input_sockets):
+def HandleRequest(client_socket, input_sockets, ws_sockets):
     print("Handling request from the client socket: ", client_socket.fileno())
     message = ""
     # Very naive approach: read until we find the last blank line
@@ -82,7 +86,7 @@ def HandleRequest(client_socket, input_sockets):
         data_in_bytes = client_socket.recv(buffer_size)
         # Connection on client side has closed.
         if len(data_in_bytes) == 0:
-            close_socket(client_socket, input_sockets)
+            close_socket(client_socket, input_sockets, ws_sockets)
             input_sockets.remove(client_socket)
             client_socket.close()
             return
@@ -97,10 +101,12 @@ def HandleRequest(client_socket, input_sockets):
     print("headers: ")
     print(headers_map)
 
-    if target == WS_ENDPOINT:
+    if target == websocket.WS_ENDPOINT:
         print("Request to WS endpoint!!")
-        if isValid_WSRequest(method, target, http_version, headers_map):
-            handle_WS_handshake_request(client_socket, ws_sockets, headers_map)
+        if websocket.isValid_WSRequest(method, target, http_version, headers_map):
+            websocket.handle_WS_handshake_request(
+                client_socket, ws_sockets, headers_map
+            )
             return
         else:
             # For invalid websocket request
@@ -110,7 +116,7 @@ def HandleRequest(client_socket, input_sockets):
 
     # For now, just return a 200. Should probably return length too, eh
     client_socket.send(b"HTTP/1.1 200 OK\r\n\r\n" + default_http_response)
-    close_socket(client_socket, input_sockets)
+    close_socket(client_socket, input_sockets, ws_sockets)
 
 
 # Pass the first line and headers from the request
@@ -140,8 +146,9 @@ def ParseRequest(request):
     return (method, target, http_version, headers_map)
 
 
-def close_socket(client_socket, input_sockets):
+def close_socket(client_socket, input_sockets, ws_sockets):
     input_sockets.remove(client_socket)
+    ws_sockets.remove(client_socket)
     client_socket.close()
     return
 

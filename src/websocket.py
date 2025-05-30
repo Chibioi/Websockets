@@ -1,6 +1,8 @@
 import hashlib
 import base64
 
+import main
+
 
 def isValid_WSRequest(method, target, http_version, headers_map):
     # We are trying to see if the WS handshake is valid
@@ -59,3 +61,14 @@ def handle_WS_handshake_request(client_socket, ws_sockets, headers_map):
 def handle_websocket_message(client_socket, input_sockets, ws_sockets):
     print("Handling WS message from client socket:", client_socket.fileno())
     message = b""
+
+    while True:
+        # Reading of the bytes message
+        data_in_bytes = client_socket.recv(main.buffer_size)
+        print("Received", len(data_in_bytes), "bytes")
+
+        # Checking the Payload length
+
+        if len(data_in_bytes) == 0:
+            main.close_socket(input_sockets, client_socket, ws_sockets)
+            return

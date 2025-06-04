@@ -2,6 +2,7 @@ import hashlib
 import base64
 
 import main
+import ws_frame
 
 
 def isValid_WSRequest(method, target, http_version, headers_map):
@@ -59,16 +60,12 @@ def handle_WS_handshake_request(client_socket, ws_sockets, headers_map):
 
 
 def handle_websocket_message(client_socket, input_sockets, ws_sockets):
-    print("Handling WS message from client socket:", client_socket.fileno())
-    message = b""
+    # Let's assume that we get a full single frame in each recv (may not
+    # be true IRL)
+    data_in_bytes = client_socket.recv(main.buffer_size)
 
-    while True:
-        # Reading of the bytes message
-        data_in_bytes = client_socket.recv(main.buffer_size)
-        print("Received", len(data_in_bytes), "bytes")
+    websocket_frame = ws_frame.WebsocketFrame()
+    websocket_frame.populateFromWebsocketFrameMessage(data_in_bytes)
 
-        # Checking the Payload length
-
-        if len(data_in_bytes) == 0:
-            main.close_socket(input_sockets, client_socket, ws_sockets)
-            return
+    print("Received message:", websocket_frame.get_payload_data().decode("utf-8"))
+    return

@@ -1,15 +1,7 @@
 import socket
 import select  # Provides access to the select() system call
+
 # The select() system call monitor many file descriptors e.g sockets and wait to see if one or more of them are ready for some I/O operations
-
-
-# from websocket import (
-#     WS_ENDPOINT,
-#     handle_WS_handshake_request,
-#     isValid_WSRequest,
-#     handle_websocket_message,
-# )
-
 import websocket
 
 tcp_ip = "127.0.0.1"
@@ -70,9 +62,8 @@ def HandleNewConnection(main_door_socket, input_sockets):
     # When we get a connection on the main socket, we want to accept the new
     # connection and add it to our input socket list. When we loop back around,
     # that socket will be ready to read from.
-    client_socket, client_address = (
-        main_door_socket.accept()
-    )  # Returns two values which are conn(which is the new socket) and address(the address bounded to the s
+    client_socket, client_address = main_door_socket.accept()
+    # Returns two values which are conn(which is the new socket) and address(the address bounded to the s
     # ocket on the other end of the connection)
     print("New socket", client_socket.fileno(), "from address:", client_address)
     input_sockets.append(client_socket)
@@ -87,8 +78,8 @@ def HandleRequest(client_socket, input_sockets, ws_sockets):
         # Connection on client side has closed.
         if len(data_in_bytes) == 0:
             close_socket(client_socket, input_sockets, ws_sockets)
-            input_sockets.remove(client_socket)
-            client_socket.close()
+            # input_sockets.remove(client_socket)
+            # client_socket.close()
             return
         message_segment = data_in_bytes.decode()
         message += message_segment
@@ -147,8 +138,10 @@ def ParseRequest(request):
 
 
 def close_socket(client_socket, input_sockets, ws_sockets):
+    print("closing socket")
+    if client_socket in ws_sockets:
+        ws_sockets.remove(client_socket)
     input_sockets.remove(client_socket)
-    ws_sockets.remove(client_socket)
     client_socket.close()
     return
 
